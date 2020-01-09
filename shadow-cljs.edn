@@ -1,0 +1,15 @@
+;; shadow-cljs configuration
+{:source-paths
+ ["src/"]
+
+ :dependencies
+ [[binaryage/devtools "0.9.11"]]
+
+ :builds
+ {:app
+  {:devtools {:repl-init-ns example.core
+              :repl-pprint true}
+   :target :react-native
+   :init-fn example.core/init
+   :output-dir "react-native/app"
+   :js-options {:js-package-dirs ["react-native/node_modules"]}}}}
