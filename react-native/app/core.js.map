@@ -1,1 +1,0 @@
-{"version":3,"sources":["core.cljs"],"mappings":";;AAEA,AAAA,AAAMA;AAAN,AACE,AAAA,AAACC","names":["example.core/init","cljs.core.print.cljs$core$IFn$_invoke$arity$variadic"],"sourcesContent":["(ns example.core)\n\n(defn init []\n  (print \"Init\"))\n"]}
