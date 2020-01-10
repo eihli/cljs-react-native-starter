@@ -44,6 +44,10 @@
     (rn/AppRegistry.registerComponent "ExampleApp" (fn [] wrapper))
     (fn [comp]
       (when-let [wrapper @wrapper-ref]
+        ;; Why do we need to reset the component here?
+        ;; Why doesn't calling forceUpdate on the parent-most component
+        ;; cause everything to re-render?
+        ;; Is there a downside to doing it this way? Is there an alternative?
         (reset! comp-ref comp)
         (.forceUpdate @wrapper-ref)))))
 
