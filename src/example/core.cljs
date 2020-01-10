@@ -8,18 +8,56 @@
             [devtools.core :as devtools]
             [re-frame.core :as rf]))
 
+;; This gives us some pretty-printing in the dev console thanks to
+;; the binaryage/devtools library. (Only works for Chrome devtools at
+;; the moment.) Ideally this would be in a namespace that is only
+;; used for development and it would be somewhere with the initialization
+;; code.
 (devtools/install!)
 
+;; Save off some references to some library functions for convenience later.
+;; Note that `(.createAppContainer react-navigation)` will
+;; invoke the `createAppContainer` function from the `react-navigation` object.
+;; `(.-createAppContainer react-navigation)`, with the `.-` before it,
+;; will just refer to the function without invoking it.
 (def create-app-container
   (.-createAppContainer react-navigation))
 (def create-bottom-tab-navigator
   (.-createBottomTabNavigator react-navigation-tabs))
 (def create-stack-navigator
   (.-createStackNavigator react-navigation-stack))
-(def initial-app-state {:counter 0})
 
-(defonce appstate (reagent/atom initial-app-state))
 
+;; The next line is a key to having a pleasant hot-reload dev experience.
+;; Anything that isn't `defonce`ed will get re-initialized when
+;; the code is hot-reloaded. So if you want state to persist, if you
+;; messed around in the REPL or clicked around in the app and
+;; you want to test changing just one small thing and you don't
+;; want to have to go through the process of clicking around in your app
+;; or evaluating a bunch of code to get back to the state that you are in,
+;; then it's important to keep that state in a `defonce` atom like this.
+;;
+;; This is also a reason to not keep state in a React components `props`.
+;; Components get re-rendered on hot-reload, so any state that's kept
+;; in the component will get lost.
+;;
+;; This would be a major problem for state that is managed by 3rd parties,
+;; like the state of navigation in the ReactNavigation library.
+;; Luckily, ReactNavigation gives us some ways to persist and restore state
+;; which we'll look at further down.
+;; https://reactnavigation.org/docs/en/state-persistence.html
+(defonce appstate (reagent/atom {:counter 0}))
+
+
+;; Typically, React apps are navigated by accessing `props.navigation.navigate`.
+;; But since we're managing navigation through `re-frame` events, we
+;; won't have access to components `props`.
+;;
+;; Therefore, we get a reference to the object and store it in an
+;; atom so we can access it from anywhere.
+;; https://reactnavigation.org/docs/en/navigating-without-navigation-prop.html
+;; Ideally, this would be in a `navigation`-related namespace with
+;; other navigation-related code.
 (def navigator-ref (atom nil))
 
 (def navigation-actions
@@ -34,29 +72,37 @@
 
 (defn child
   []
+  ;; `reagent/cursor` is kind of like an atom,
+  ;; but it's a reference to a value nested somewhere
+  ;; deep inside an atom.
+  ;;
+  ;; http://reagent-project.github.io/docs/master/ManagingState.html
+  ;;
+  ;; Reagent keeps track of which views dereference its
+  ;; atoms so that when one of them changes it knows to
+  ;; re-render that view.
+  ;;
+  ;; Note that the `appstate` atom was created with
+  ;; `reagent/atom` and not the built-in `atom`.
   (let [counter (reagent/cursor appstate [:counter])]
-    [:> rn/Text
-     {:on-press (fn [] (print @counter) (swap! counter inc))}
-     "Counter: " @counter]))
+    [:> rn/View
+     [:> rn/Text
+      {:on-press (fn [] (print @counter) (swap! counter inc))}
+      "Counter: " @counter ". Click to increase."]
+     [:> rn/Text
+      "Change this code, save the file"
+      ", and see hot-reloading in action."
+      " You won't lose the state of the counter!"]]))
 
 (defn home
+  ;; The home screen. We'll show a button on the home tab to get here.
   []
   [:> rn/View
    [:> rn/Text "Hello world!"]
    [child]])
 
-(defn new-item
-  []
-  [:> rn/View
-   [:> rn/Text
-    "Create new thing"]])
-
-(defn edit-item
-  []
-  [:> rn/View
-   [:> rn/Text "Edit existing thing"]])
-
 (defn settings
+  ;; Another screen that we'll show a button for on the bottom tab.
   []
   [:> rn/View
    [:> rn/Text "Settings Tab"]
@@ -67,6 +113,26 @@
     {:on-press #(navigate (clj->js :settings/edit-item) {})}
     "Edit item"]])
 
+(defn new-item
+  ;; This will be a "stack" navigation screen nested under
+  ;; the settings "tab" navigation.
+  []
+  [:> rn/View
+   [:> rn/Text
+    "Create new thing"]])
+
+(defn edit-item
+  ;; Another "stack" navigation screen nested under settings "tab' nav.
+  []
+  [:> rn/View
+   [:> rn/Text "Edit existing thing"]])
+
+
+;; Since ReactNavigation stores its state as component properties,
+;; we'll use the functionality they give us for persisting
+;; and loading navigation state.
+;;
+;; https://reactnavigation.org/docs/en/state-persistence.html
 (defonce nav-state (atom nil))
 
 (defn persist-navigation-state [state]
@@ -77,27 +143,21 @@
   (js/Promise. (fn [resolve]
                  (resolve @nav-state))))
 
-;; navigationOptions needs to be set on the react
-;; class as a static method. That's why we
-;; reactify it in the let above and use this
-;; doto with goog.object/set to give home that
-;; property.
-;;
-;; The reason for all of this is that we want
-;; to override the default behavior of the
-;; tab bar click handler. By default, it updates
-;; the state of components, it sets state in some props
-;; that handles displaying different screens.
-;;
-;; In re-frame fashion, we want all state to be handled
-;; in events and stored in the app-db. This way,
-;; while we're editing and hot-reloading stuff, we
-;; don't lose the state that we're in. If we're working
-;; on a screen that's nested deep down in our route,
-;; we don't want a hot-reload to bump us back up to the
-;; home screen, which is what would happen if
-;; state was stored in the props of components.
 
+;; Below, you'll see a lot of mucking about with
+;; `(goog.object/set "navigationOptions" ...)`
+;;
+;; navigationOptions needs to be set on the react
+;; class as a static method.
+;;
+;; https://reactnavigation.org/docs/en/headers.html#using-params-in-the-title
+;;
+;; This is ripe for maybe pulling out into a macro
+;; or function.
+;;
+;; Note that I think there's a reason to use
+;; `goog.object/set` here over the builtin `aset`
+;; but I'm not sure if that's the case or why.
 (def home-stack
   (create-stack-navigator
    (clj->js
