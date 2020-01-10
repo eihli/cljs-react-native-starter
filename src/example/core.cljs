@@ -20,6 +20,18 @@
 
 (defonce appstate (reagent/atom initial-app-state))
 
+(def navigator-ref (atom nil))
+
+(def navigation-actions
+  (.-NavigationActions react-navigation))
+
+(defn navigate [routeName, params]
+  (.dispatch @navigator-ref
+             (.navigate
+              navigation-actions
+              #js {:routeName routeName
+                   :params params})))
+
 (defn child
   []
   (let [counter (reagent/cursor appstate [:counter])]
@@ -36,7 +48,8 @@
 (defn new-item
   []
   [:> rn/View
-   [:> rn/Text "Create new thing"]])
+   [:> rn/Text
+    "Create new thing"]])
 
 (defn edit-item
   []
@@ -47,9 +60,12 @@
   []
   [:> rn/View
    [:> rn/Text "Settings Tab"]
-   [:> rn/TouchableHighlight
-    [new-item]] 
-   [edit-item]])
+   [:> rn/Text
+    {:on-press #(navigate (clj->js :settings/new-item) {})}
+    "New item"] 
+   [:> rn/Text
+    {:on-press #(navigate (clj->js :settings/edit-item) {})}
+    "Edit item"]])
 
 (defonce nav-state (atom nil))
 
@@ -96,7 +112,15 @@
     {:settings/home (doto (reagent/reactify-component settings)
                       (goog.object/set
                        "navigationOptions"
-                       #js {:title "Settings"}))})))
+                       #js {:title "Settings"}))
+     :settings/new-item (doto (reagent/reactify-component new-item)
+                          (goog.object/set
+                           "navigationOptions"
+                           #js {:title "New item"}))
+     :settings/edit-item (doto (reagent/reactify-component edit-item)
+                           (goog.object/set
+                            "navigationOptions"
+                            #js {:title "Edit item"}))})))
 
 (def tab-navigator
   (create-bottom-tab-navigator
@@ -111,18 +135,6 @@
           (goog.object/set "navigationOptions"
                            #js {;; :tabBarOnPress identity
                                 :tabBarLabel "Settings"}))})) 
-
-(def navigator-ref (atom nil))
-
-(def navigation-actions
-  (.-NavigationActions react-navigation))
-
-(defn navigate [routeName, params]
-  (.dispatch @navigator-ref
-             (.navigate
-              navigation-actions
-              #js {:routeName routeName
-                   :params params})))
 
 (defn app-container
   []
