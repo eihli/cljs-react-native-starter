@@ -4,7 +4,8 @@
 
  :dependencies
  [[binaryage/devtools "0.9.11"]
-  [reagent "0.9.0-rc4"]]
+  [reagent "0.9.0-rc4"]
+  [re-frame "0.11.0-rc3"]]
 
  :builds
  {:app

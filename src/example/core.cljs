@@ -5,10 +5,10 @@
             ["react-navigation-stack" :as react-navigation-stack]
             ["react-navigation-tabs" :as react-navigation-tabs]
             [reagent.core :as reagent]
-            [devtools.core :as devtools]))
+            [devtools.core :as devtools]
+            [re-frame.core :as rf]))
 
 (devtools/install!)
-
 
 (def create-app-container
   (.-createAppContainer react-navigation))
@@ -64,11 +64,27 @@
                 (doto home
                   (goog.object/set "navigationOptions"
                                    #js {:tabBarOnPress identity})))
-        :tab-1 (reagent/reactify-component tab-1)}))
+        :tab-1 (let [tab-1 (reagent/reactify-component tab-1)]
+                 (doto tab-1
+                   (goog.object/set "navigationOptions"
+                                    #js {:tabBarOnPress identity})))}))
 
-(def app-container
-  (fn []
-    [(reagent/adapt-react-class (create-app-container tab-navigator))]))
+(def navigator-ref (atom nil))
+
+(def navigation-actions
+  (.-NavigationActions react-navigation))
+
+(defn navigate [routeName, params]
+  (.dispatch @navigator-ref
+             (.navigate
+              navigation-actions
+              #js {:routeName routeName
+                   :params params})))
+
+(defn app-container
+  []
+  [(reagent/adapt-react-class (create-app-container tab-navigator))
+   {:ref (fn [ref] (reset! navigator-ref ref))}])
 
 (defn make-reloader [comp]
   (let [comp-ref (reagent/atom comp)
