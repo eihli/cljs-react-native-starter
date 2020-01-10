@@ -4,7 +4,11 @@
             ["react-navigation" :as react-navigation]
             ["react-navigation-stack" :as react-navigation-stack]
             ["react-navigation-tabs" :as react-navigation-tabs]
-            [reagent.core :as reagent]))
+            [reagent.core :as reagent]
+            [devtools.core :as devtools]))
+
+(devtools/install!)
+
 
 (def create-app-container
   (.-createAppContainer react-navigation))
