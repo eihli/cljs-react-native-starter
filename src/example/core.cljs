@@ -38,6 +38,16 @@
   [:> rn/View
    [:> rn/Text "This is a tab"]])
 
+(defonce nav-state (atom nil))
+
+(defn persist-navigation-state [state]
+  (js/Promise. (fn [resolve]
+                 (resolve (reset! nav-state state)))))
+
+(defn load-navigation-state []
+  (js/Promise. (fn [resolve]
+                 (resolve @nav-state))))
+
 (def tab-navigator
   (create-bottom-tab-navigator
    #js {:home (let [home (reagent/reactify-component home)]
@@ -84,7 +94,9 @@
 (defn app-container
   []
   [(reagent/adapt-react-class (create-app-container tab-navigator))
-   {:ref (fn [ref] (reset! navigator-ref ref))}])
+   {:ref (fn [ref] (reset! navigator-ref ref))
+    :persistNavigationState persist-navigation-state
+    :loadNavigationState load-navigation-state}])
 
 (defn make-reloader [comp]
   (let [comp-ref (reagent/atom comp)
