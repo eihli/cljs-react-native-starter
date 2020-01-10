@@ -1,8 +1,8 @@
 The following describes the way this directory was created. You may want to re-run these commands if time obsoletes this repo.
 
-`npx react-native init ExampleApp` <- In parent directory
-`npx react-native start` <- In directory created by above command
-`npx react-native run-android`
+- ``npx react-native init ExampleApp`` <- In parent directory
+- ``npx react-native start`` <- In directory created by above command
+- ``npx react-native run-android``
 
 https://facebook.github.io/react-native/docs/getting-started.html
 
