@@ -40,8 +40,31 @@
 
 (def tab-navigator
   (create-bottom-tab-navigator
-   (clj->js {:home (reagent/reactify-component home)
-             :tab-1 (reagent/reactify-component tab-1)})))
+   #js {:home (let [home (reagent/reactify-component home)]
+                ;; navigationOptions needs to be set on the react
+                ;; class as a static method. That's why we
+                ;; reactify it in the let above and use this
+                ;; doto with goog.object/set to give home that
+                ;; property.
+                ;;
+                ;; The reason for all of this is that we want
+                ;; to override the default behavior of the
+                ;; tab bar click handler. By default, it updates
+                ;; the state of components, it sets state in some props
+                ;; that handles displaying different screens.
+                ;;
+                ;; In re-frame fashion, we want all state to be handled
+                ;; in events and stored in the app-db. This way,
+                ;; while we're editing and hot-reloading stuff, we
+                ;; don't lose the state that we're in. If we're working
+                ;; on a screen that's nested deep down in our route,
+                ;; we don't want a hot-reload to bump us back up to the
+                ;; home screen, which is what would happen if
+                ;; state was stored in the props of components.
+                (doto home
+                  (goog.object/set "navigationOptions"
+                                   #js {:tabBarOnPress identity})))
+        :tab-1 (reagent/reactify-component tab-1)}))
 
 (def app-container
   (fn []
