@@ -1,36 +1,57 @@
 (ns example.core
   (:require ["react-native" :as rn]
-            ["react" :as react]))
+            ["react" :as react]
+            [reagent.core :as reagent]))
 
-(def create-element
-  (.-createElement react))
+(def initial-app-state {:counter 0})
 
-(def MainElement
-  (create-element rn/Text nil "Hello world!"))
+(defonce appstate (reagent/atom initial-app-state))
 
-(defn make-component
-  ([display-name m] (make-component display-name nil m))
-  ([display-name construct m]
-   (let [cmp (fn [props context updater]
-               (this-as this
-                 (.call react/Component this props context updater)
-                 (when construct
-                   (construct this))
-                 this))]
-     (goog.object/extend (.-prototype cmp) (.-prototype react/Component) m)
+(defn child
+  []
+  (let [counter (reagent/cursor appstate [:counter])]
+    [:> rn/Text
+     {:on-press (fn [] (print @counter) (swap! counter inc))}
+     "Counter: " @counter]))
 
-     (when display-name
-       (set! (.-displayName cmp) display-name))
-     (set! (.. cmp -prototype -constructor) cmp))))
+(defn home
+  []
+  [:> rn/View
+   [:> rn/Text "Hello world!"]
+   [child]])
 
-(def my-component
-  (make-component
-   "MyComponent"
-   (fn [this] (set! (.-state this) #js{:counter 0}))
-   #js{:render
-       (fn []
-         MainElement)}))
+(defn make-reloader [comp]
+  (let [comp-ref (atom comp)
+        wrapper-ref (atom nil)
+        wrapper (reagent/create-class
+                 {:render
+                  (fn []
+                    (let [comp @comp-ref]
+                      (if (fn? comp) (comp) comp)))
+                  
+                  :component-did-mount
+                  (fn []
+                    (this-as this
+                      (reset! wrapper-ref this)))})]
+    ;; Whatever we register with rn/AppRegistry must exist
+    ;; permanently. Since we can't change it, we must treat it
+    ;; like a wrapper and wrap something that we *can* change.
+    ;;
+    ;; The `wrapper` component we created above renders whatever
+    ;; is in our `comp-ref` atom. We get hot reloading
+    ;; by resetting the value in that atom and forcing
+    ;; a re-render with `forceUpdate`.
+    (rn/AppRegistry.registerComponent "ExampleApp" (fn [] wrapper))
+    (fn [comp]
+      (when-let [wrapper @wrapper-ref]
+        (reset! comp-ref comp)
+        (.forceUpdate @wrapper-ref)))))
+
+(defonce reload (make-reloader home))
+
+(defn ^:dev/after-load start []
+  (reload home))
 
 (defn init []
-  (rn/AppRegistry.registerComponent "ExampleApp" (fn [] my-component)))
+  (start))
 
