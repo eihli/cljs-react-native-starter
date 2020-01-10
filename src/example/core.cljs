@@ -77,6 +77,14 @@
                   (fn []
                     (let [comp @comp-ref]
                       (if (fn? comp) (comp) comp)))})]
+    ;; Whatever we register with rn/AppRegistry must exist
+    ;; permanently. Since we can't change it, we must treat it
+    ;; like a wrapper and wrap something that we *can* change.
+    ;;
+    ;; The `wrapper` component we created above renders whatever
+    ;; is in our `comp-ref` atom. We get hot reloading
+    ;; by resetting the value in that atom. Since it's a
+    ;; reagent/atom, changing it forces a re-render.    
     (rn/AppRegistry.registerComponent "ExampleApp" (fn [] wrapper))
     (fn [comp]
       (reset! comp-ref comp))))
