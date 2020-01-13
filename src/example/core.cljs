@@ -63,12 +63,13 @@
 (def navigation-actions
   (.-NavigationActions react-navigation))
 
-(defn navigate [routeName, params]
+(defn navigate [routeName params action]
   (.dispatch @navigator-ref
              (.navigate
               navigation-actions
               #js {:routeName routeName
-                   :params params})))
+                   :params params
+                   :action action})))
 
 (defn child
   []
@@ -107,10 +108,10 @@
   [:> rn/View
    [:> rn/Text "Settings Tab"]
    [:> rn/Text
-    {:on-press #(navigate (clj->js :settings/new-item) {})}
+    {:on-press #(navigate (clj->js :settings/new-item) {} nil)}
     "New item"] 
    [:> rn/Text
-    {:on-press #(navigate (clj->js :settings/edit-item) {})}
+    {:on-press #(navigate (clj->js :settings/edit-item) {} nil)}
     "Edit item"]])
 
 (defn new-item
