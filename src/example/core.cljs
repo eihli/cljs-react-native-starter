@@ -6,7 +6,8 @@
             ["react-navigation-tabs" :as react-navigation-tabs]
             [reagent.core :as reagent]
             [devtools.core :as devtools]
-            [re-frame.core :as rf]))
+            [re-frame.core :as rf]
+            [cljs.spec.alpha :as s]))
 
 ;; This gives us some pretty-printing in the dev console thanks to
 ;; the binaryage/devtools library. (Only works for Chrome devtools at
@@ -63,13 +64,12 @@
 (def navigation-actions
   (.-NavigationActions react-navigation))
 
-(defn navigate [routeName params action]
+(defn navigate [routeName params]
   (.dispatch @navigator-ref
              (.navigate
               navigation-actions
               #js {:routeName routeName
-                   :params params
-                   :action action})))
+                   :params params})))
 
 (defn child
   []
@@ -95,6 +95,31 @@
       ", and see hot-reloading in action."
       " You won't lose the state of the counter!"]]))
 
+
+;; Database Stuff
+;; Extract to `db.cljs`
+
+(s/def ::path keyword?)
+(def default-db
+  {:screen-params nil})
+
+;; Effects
+(rf/reg-fx
+ ::react-navigate
+ (fn [[view-id]]
+   (navigate (name view-id) nil)))
+
+(rf/reg-event-fx
+ :navigate
+ (fn [{:keys [db]} [_ view-id params]]
+   {:db (assoc-in db [:screen-params] params)
+    ::react-navigate [view-id]}))
+
+(rf/reg-sub
+ :screen-params
+ (fn [db _]
+   (:screen-params db)))
+
 (defn home
   ;; The home screen. We'll show a button on the home tab to get here.
   []
@@ -108,10 +133,10 @@
   [:> rn/View
    [:> rn/Text "Settings Tab"]
    [:> rn/Text
-    {:on-press #(navigate (clj->js :settings/new-item) {} nil)}
+    {:on-press #(rf/dispatch [:navigate :settings-new-todo])}
     "New item"] 
    [:> rn/Text
-    {:on-press #(navigate (clj->js :settings/edit-item) {} nil)}
+    {:on-press #(rf/dispatch [:navigate :settings-edit-todo 1])}
     "Edit item"]])
 
 (defn new-item
@@ -124,9 +149,9 @@
 
 (defn edit-item
   ;; Another "stack" navigation screen nested under settings "tab' nav.
-  []
+  [item]
   [:> rn/View
-   [:> rn/Text "Edit existing thing"]])
+   [:> rn/Text "Edit existing thing: " @(rf/subscribe [:screen-params])]])
 
 
 ;; Since ReactNavigation stores its state as component properties,
@@ -162,23 +187,23 @@
 (def home-stack
   (create-stack-navigator
    (clj->js
-    {:home/home (doto (reagent/reactify-component home)
-                  (goog.object/set
-                   "navigationOptions"
-                   #js {:title "Home"}))})))
+    {:home-home (doto (reagent/reactify-component home)
+             (goog.object/set
+              "navigationOptions"
+              #js {:title "Home"}))})))
 
 (def settings-stack
   (create-stack-navigator
    (clj->js
-    {:settings/home (doto (reagent/reactify-component settings)
+    {:settings-home (doto (reagent/reactify-component settings)
                       (goog.object/set
                        "navigationOptions"
                        #js {:title "Settings"}))
-     :settings/new-item (doto (reagent/reactify-component new-item)
+     :settings-new-todo (doto (reagent/reactify-component new-item)
                           (goog.object/set
                            "navigationOptions"
                            #js {:title "New item"}))
-     :settings/edit-item (doto (reagent/reactify-component edit-item)
+     :settings-edit-todo (doto (reagent/reactify-component edit-item)
                            (goog.object/set
                             "navigationOptions"
                             #js {:title "Edit item"}))})))
