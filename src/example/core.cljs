@@ -5,7 +5,6 @@
             ["react-navigation-stack" :as react-navigation-stack]
             ["react-navigation-tabs" :as react-navigation-tabs]
             [reagent.core :as reagent]
-            [devtools.core :as devtools]
             [re-frame.core :as rf]
             [cljs.spec.alpha :as s]))
 
