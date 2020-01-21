@@ -180,16 +180,22 @@
 ;; This is ripe for maybe pulling out into a macro
 ;; or function.
 ;;
-;; Note that I think there's a reason to use
-;; `goog.object/set` here over the builtin `aset`
-;; but I'm not sure if that's the case or why.
+;; Note `goog.object/set` rather than `aset`.
+;; https://clojurescript.org/news/2017-07-14-checked-array-access In
+;; fact, goog.object/get is safer in that it has checks that the
+;; object being passed is not nil and that the field being accessed
+;; actually exists on the object, allowing you to supply an
+;; alternative “not found” value to return if not. If you need to do
+;; nested property access, there is a goog.object/getValueByKeys that
+;; can also be considered as a drop-in replacement for a variadic aget
+;; call.
 (def home-stack
   (create-stack-navigator
    (clj->js
     {:home-home (doto (reagent/reactify-component home)
-             (goog.object/set
-              "navigationOptions"
-              #js {:title "Home"}))})))
+                  (goog.object/set
+                   "navigationOptions"
+                   #js {:title "Home"}))})))
 
 (def settings-stack
   (create-stack-navigator
@@ -212,13 +218,13 @@
    #js {:home
         (doto home-stack
           (goog.object/set "navigationOptions"
-                           #js {;; :tabBarOnPress identity
+                           #js { ;; :tabBarOnPress identity
                                 :tabBarLabel "Home"}))
         
         :settings
         (doto settings-stack
           (goog.object/set "navigationOptions"
-                           #js {;; :tabBarOnPress identity
+                           #js { ;; :tabBarOnPress identity
                                 :tabBarLabel "Settings"}))})) 
 
 (defn app-container
